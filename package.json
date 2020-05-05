@@ -1,0 +1,48 @@
+{
+  "name": "back-end-api",
+  "version": "1.0.0",
+  "description": "Typescript, Fastify, Postgres, and Mocha",
+  "main": "build/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thebearingedge/back-end-api.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/thebearingedge/back-end-api/issues"
+  },
+  "homepage": "https://github.com/thebearingedge/back-end-api#readme",
+  "devDependencies": {
+    "@types/chai": "^4.2.11",
+    "@types/mocha": "^7.0.2",
+    "@typescript-eslint/eslint-plugin": "^2.31.0",
+    "@typescript-eslint/parser": "^2.31.0",
+    "chai": "^4.2.0",
+    "chai-struct": "^3.0.4",
+    "eslint": "^6.8.0",
+    "eslint-config-standard-with-typescript": "^16.0.0",
+    "eslint-plugin-import": "^2.20.2",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "husky": "^4.2.5",
+    "lint-staged": "^10.2.2",
+    "mocha": "^7.1.2",
+    "nyc": "^15.0.1",
+    "ts-node": "^8.10.1",
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "ajv": "^6.12.2",
+    "ajv-errors": "^1.0.1",
+    "dotenv": "^8.2.0",
+    "fastify": "^2.14.0",
+    "postgres": "^1.0.2",
+    "postgres-migrations": "^4.0.3"
+  }
+}
