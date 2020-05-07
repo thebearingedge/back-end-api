@@ -1,0 +1,20 @@
+version: '3.7'
+
+services:
+  postgres:
+    image: postgres:12.2-alpine
+    environment:
+      - POSTGRES_DB=api
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+    ports:
+      - 5432:5432
+  pgweb:
+    image: sosedoff/pgweb:0.11.6
+    ports:
+      - 8081:8081
+    environment:
+      - DATABASE_URL=postgres://admin:password@postgres/lms?sslmode=disable
+    depends_on:
+      - postgres
+    restart: always

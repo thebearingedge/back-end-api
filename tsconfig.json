@@ -2,15 +2,19 @@
   "compilerOptions": {
     "downlevelIteration": true,
     "esModuleInterop": true,
-    "lib": ["es6"],
+    "module": "commonjs",
     "noImplicitAny": true,
     "strictNullChecks": true,
-    "outDir": "dist/",
-    "declaration": true,
-    "target": "es5"
+    "outDir": "build/",
+    "target": "es2018"
   },
+  "include": [
+    "api/",
+    "database/"
+  ],
   "exclude": [
     "node_modules/",
+    "**/*.test.ts",
     "coverage/"
   ]
 }
