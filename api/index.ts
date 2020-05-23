@@ -1,11 +1,19 @@
 import 'dotenv/config'
 import connectToPostgres from '../database/connect-to-postgres'
 
-type Output = { message: string }
+type Message = {
+  message: string
+}
 
 ;(async () => {
   const sql = await connectToPostgres()
-  const [result]: Output[] = await sql`select 'hello!' as "message"`
+  const result = await sql.begin(async sql => {
+    const [result]: Message[] = await sql`
+      select 'hello!' as "message"
+      where ${1} = 1
+    `
+    return result
+  })
   console.log(result)
   await sql.disconnect()
 })().catch(err => {

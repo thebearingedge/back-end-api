@@ -1,119 +1,177 @@
 import util from 'util'
-import zip from 'lodash/zip'
-import flatten from 'lodash/flatten'
 import uniqueId from 'lodash/uniqueId'
-import { Client, Pool, PoolClient, QueryResult } from 'pg'
+import castArray from 'lodash/castArray'
+import { Pool, Client, PoolClient, QueryResult } from 'pg'
 
-const { escapeIdentifier } = Client.prototype
+type Many<T> = T | T[]
 
-type Result<T> = T[] & Omit<QueryResult, 'rows'>
+type Data =
+  | boolean
+  | number
+  | string
+  | null
+  | undefined
+  | Data[]
+  | { toJSON: () => string }
+  | { [key: string]: Data }
 
-type SQL = <T>(template: TemplateStringsArray, ...values: any[]) => Promise<Result<T>>
+type Row = Record<string, Data>
 
-type Transactor = {
-  begin<T extends Transaction>(transacting: T): TrxResult<T>
+type Connection = Pool | Client | PoolClient
+
+type Result<T extends Row> = T[] & Omit<QueryResult, 'rows'>
+
+type Queryable = {
+  <T extends Row>(template: TemplateStringsArray, ...args: Array<Data | Insert>): Promise<Result<T>>
 }
 
-export type Driver = SQL & Transactor & {
+type Inserter = {
+  insert: (rows: Many<Row>, ...cols: string[]) => Insert
+}
+
+type Transactor = {
+  begin: () => Promise<Trx>
+  begin: <T extends Transaction>(transaction: T) => TrxResult<T>
+}
+
+type Driver = Queryable & Inserter & Transactor
+
+type Sql = Driver & {
   disconnect: () => Promise<void>
 }
 
-type Transaction = (trx: Trx) => any
-
 type TransactionState = 'pending' | 'committed' | 'rolled back'
 
-type TrxResult<T extends Transaction> = Promise<ReturnType<T>>
-
-type TransactionConfig = {
-  client: Client | PoolClient
-  parent: Trx | null
-}
-
-type Trx = SQL & Transactor & {
+type Trx = Driver & {
   commit: () => Promise<void>
   rollback: () => Promise<void>
   savepoint: () => Promise<void>
   getState: () => TransactionState
 }
 
-function createSQL<T>(connection: Client | PoolClient | Pool, methods: T): SQL & T {
-  async function sql<T>(template: TemplateStringsArray, ...values: any[]): Promise<Result<T>> {
-    const params = values.map((_, index) => `$${++index}`)
-    const text = flatten(zip(template, params.concat(''))).join('')
-    const { rows, ...result } = await connection.query({
+type Transaction = (trx: Trx) => Promise<any>
+
+type TrxResult<T extends Transaction> = Promise<ReturnType<T>>
+
+type TransactionConfig = {
+  client: PoolClient
+  parentId?: string
+}
+
+const { escapeIdentifier } = Client.prototype
+
+class Insert {
+
+  constructor(public rows: Row[], public cols: string[]) {}
+
+}
+
+function createSql<M>(conn: Connection, methods: M): Queryable & Inserter & M {
+  const sql: Queryable = async (template, ...args) => {
+    let param = 1
+    const values: Data[] = []
+    const fragments = [...template]
+    args.forEach((value, index) => {
+      if (!(value instanceof Insert)) {
+        values.push(value)
+        fragments[index] += `$${param++}`
+      } else {
+        const { rows, cols } = value
+        const tuple = (): string => ` (${cols.map(() => `$${param++}`).join(', ')})`
+        const tuples: string[] = []
+        rows.forEach(row => {
+          tuples.push(tuple())
+          cols.forEach(column => values.push(row[column]))
+        })
+        fragments[index] += `(${cols.map(escapeIdentifier).join(', ')}) values`
+        fragments[index] += tuples.join(', ')
+      }
+    })
+    const text = fragments.join('')
+    const { rows, ...result } = await conn.query({
       text,
       values
     })
     return Object.assign(rows, result)
   }
-  return Object.assign(sql, methods)
+  return Object.assign(sql, methods, {
+    insert(rows: Many<Row>, ...cols: string[]): Insert {
+      rows = castArray<Row>(rows)
+      cols = cols.length > 0
+        ? cols
+        : Object.keys(rows[0])
+      return new Insert(rows, cols)
+    }
+  })
 }
 
-function createTransaction({ client, parent }: TransactionConfig): Trx {
+function createTrx({ client, parentId }: TransactionConfig): Trx {
 
-  const id = uniqueId()
+  const id = uniqueId('trx')
   let state: TransactionState = 'pending'
 
-  const sql = createSQL(client, {
+  const trx = createSql(client, {
     getState: () => state,
-    begin: async (transaction: Transaction) => {
-      const trx = createTransaction({ client, parent: null })
+    begin: async (transaction?: Transaction) => {
+      await client.query(`savepoint ${escapeIdentifier(id)}`)
+      const child = createTrx({ client, parentId: id })
+      if (typeof transaction !== 'function') return child
       try {
-        await trx.savepoint()
-        const pending = transaction(trx)
-        if (!util.types.isPromise(pending)) return pending
-        const result = await pending
-        if (trx.getState() !== 'pending') return result
-        await trx.savepoint()
+        const result = await transaction(child)
+        if (child.getState() !== 'pending') return result
+        await child.savepoint()
         return result
       } catch (err) {
-        await trx.rollback()
+        await child.rollback()
         throw err
       }
     },
     savepoint: async () => {
       if (state !== 'pending') {
-        throw new Error(`Transaction may not be saved after being ${state}.`)
+        throw new Error(`Transaction can't be saved after being ${state}.`)
       }
-      await client.query(`savepoint ${escapeIdentifier(String(id))}`)
+      await client.query(`savepoint ${escapeIdentifier(id)}`)
     },
     commit: async () => {
       if (state !== 'pending') {
-        throw new Error(`Transaction may not be committed after being ${state}.`)
+        throw new Error(`Transaction can't be committed after being ${state}.`)
       }
-      await (parent ?? sql)`commit`
+      await client.query('commit')
       state = 'committed'
     },
     rollback: async () => {
       if (state !== 'pending') {
-        throw new Error(`Transaction may not be rolled back after being ${state}.`)
+        throw new Error(`Transaction can't be rolled back after being ${state}.`)
       }
-      parent == null
-        ? await client.query('rollback')
-        : await client.query(`rollback to ${escapeIdentifier(String(id))}`)
       state = 'rolled back'
+      if (parentId == null) {
+        await client.query('rollback')
+        client.release()
+      } else {
+        await client.query(`rollback to ${escapeIdentifier(parentId)}`)
+      }
     }
   })
-
-  return sql
+  return trx
 }
 
-export default function createDriver(pool: Pool): Driver {
-  return createSQL(pool, {
+export default function createDriver(pool: Pool): Sql {
+  return createSql(pool, {
     disconnect: async () => pool.end(),
-    begin: async (transaction: Transaction) => {
-      const client = await this.client.connect()
-      const sql = createTransaction({ client, parent: null })
+    begin: async (transaction?: Transaction) => {
+      const client = await pool.connect()
+      await client.query('begin')
+      const trx = createTrx({ client })
+      if (typeof transaction !== 'function') return trx
       try {
-        await sql`begin`
-        const pending = transaction(sql)
+        const pending = transaction(trx)
         if (!util.types.isPromise(pending)) return pending
         const result = await pending
-        if (sql.getState() !== 'pending') return result
-        await sql.commit()
+        if (trx.getState() !== 'pending') return result
+        await trx.commit()
         return result
       } catch (err) {
-        await sql.rollback()
+        await trx.rollback()
         throw err
       } finally {
         client.release()
@@ -121,3 +179,5 @@ export default function createDriver(pool: Pool): Driver {
     }
   })
 }
+
+export { Sql, Trx }

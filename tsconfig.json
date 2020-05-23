@@ -1,12 +1,10 @@
 {
   "compilerOptions": {
-    "downlevelIteration": true,
     "esModuleInterop": true,
     "module": "commonjs",
-    "noImplicitAny": true,
-    "strictNullChecks": true,
     "outDir": "build/",
-    "target": "es2018"
+    "strict": true,
+    "target": "es2019"
   },
   "include": [
     "api/",
@@ -14,7 +12,6 @@
   ],
   "exclude": [
     "node_modules/",
-    "**/*.test.ts",
     "coverage/"
   ]
 }

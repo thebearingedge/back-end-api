@@ -1,8 +1,8 @@
 import pg from 'pg'
 import retry from 'promise-retry'
-import createDriver, { Driver } from './create-driver'
+import createDriver, { Sql, Trx } from './create-driver'
 
-export default async function connectToPostgres(): Promise<Driver> {
+export default async function connectToPostgres(): Promise<Sql> {
   return retry(async retry => {
     const sql = createDriver(new pg.Pool({
       connectionString: process.env.DATABASE_URL
@@ -17,3 +17,5 @@ export default async function connectToPostgres(): Promise<Driver> {
     }
   }, { retries: 5 })
 }
+
+export { Sql, Trx }
