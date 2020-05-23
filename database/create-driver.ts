@@ -30,8 +30,10 @@ type Inserter = {
 }
 
 type Transactor = {
-  begin: () => Promise<Trx>
-  begin: <T extends Transaction>(transaction: T) => TrxResult<T>
+  begin: {
+    (): Promise<Trx>
+    <T extends Transaction>(transaction: T): TrxResult<T>
+  }
 }
 
 type Driver = Queryable & Inserter & Transactor
