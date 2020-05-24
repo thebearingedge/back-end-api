@@ -1,6 +1,5 @@
 import 'mocha'
-import { expect, inject } from '../test'
-import { Trx } from '../../database/create-driver'
+import { inject, Trx, expect } from '../test'
 
 let sql: Trx
 
@@ -9,18 +8,31 @@ beforeEach(inject(({ _sql }) => {
 }))
 
 it('works!', async () => {
-  const user = { username: 'foo', dateOfBirth: new Date() }
-  const [foo]: Array<typeof user> = await sql`
-    with "inserted" as (
-      insert into "users"
-      ${sql.insert(user)}
-      returning *
-    )
-    select *
-      from "inserted"
-     where "username" = ${user.username}
-  `
-  expect(foo)
-    .to.be.an('object')
-    .that.deep.equals(user)
+  await sql.begin(async sql => {
+
+    const first = { username: 'foo', dateOfBirth: new Date() }
+    const second = { username: 'bar', dateOfBirth: new Date() }
+    await sql.insertInto('users', [second])
+    const [bar]: Array<typeof second> = await sql`
+      select *
+        from "users"
+    `
+    expect(bar)
+      .to.been.an('object')
+      .that.includes({ username: 'bar' })
+    const [foo]: Array<typeof first> = await sql`
+      with "inserted" as (
+        insert into "users"
+        ${sql.insert(first)}
+        returning *
+      )
+      select *
+        from "inserted"
+       where "username" = ${first.username}
+    `
+    expect(foo)
+      .to.be.an('object')
+      .that.deep.equals(first)
+  })
+
 })

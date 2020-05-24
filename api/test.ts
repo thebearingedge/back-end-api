@@ -1,9 +1,23 @@
 import 'mocha'
+import { expect } from 'chai'
 import connectToPostgres, { Sql, Trx } from '../database/connect-to-postgres'
+
+type Dependencies = {
+  _sql: Trx
+}
+
+type Setup = (dependencies: Dependencies) => Promise<void> | void
 
 let rootDb: Sql
 let rootTrx: Trx
 let testTrx: Trx
+
+const inject = (setup: Setup) => (done: MochaDone) => {
+  (async () => {
+    await setup({ _sql: testTrx })
+    done()
+  })().catch(done)
+}
 
 before('connect to database', done => {
   (async () => {
@@ -41,17 +55,4 @@ after('disconnect from database', done => {
   })().catch(done)
 })
 
-type Dependencies = {
-  _sql: Trx
-}
-
-type Setup = (dependencies: Dependencies) => Promise<void> | void
-
-export const inject = (setup: Setup) => (done: MochaDone) => {
-  (async () => {
-    await setup({ _sql: testTrx })
-    done()
-  })().catch(done)
-}
-
-export { expect } from 'chai'
+export { inject, Trx, expect }
