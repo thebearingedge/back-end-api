@@ -10,7 +10,8 @@
     "cover": "nyc npm test",
     "services:start": "docker-compose up -d --build",
     "services:stop": "docker-compose down",
-    "test": "mocha"
+    "test": "mocha",
+    "upgrade": "npm-check -u"
   },
   "lint-staged": {
     "*.ts": [
@@ -126,36 +127,38 @@
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "1.0.1",
     "@types/chai": "4.2.11",
-    "@types/lodash": "4.14.152",
+    "@types/lodash": "^4.14.157",
     "@types/mocha": "7.0.2",
-    "@types/node": "14.0.5",
-    "@types/pg": "7.14.3",
+    "@types/node": "^14.0.22",
+    "@types/pg": "^7.14.4",
     "@types/promise-retry": "1.1.3",
-    "@typescript-eslint/eslint-plugin": "^2.34.0",
-    "@typescript-eslint/parser": "^2.34.0",
+    "@typescript-eslint/eslint-plugin": "^3.6.0",
+    "@typescript-eslint/parser": "^3.6.0",
     "chai": "4.2.0",
     "chai-struct": "3.0.4",
-    "eslint": "7.1.0",
-    "eslint-config-standard-with-typescript": "17.0.0",
-    "eslint-plugin-import": "2.20.2",
+    "eslint": "^7.4.0",
+    "eslint-config-standard-with-typescript": "^18.0.2",
+    "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-node": "11.1.0",
     "eslint-plugin-promise": "4.2.1",
     "eslint-plugin-standard": "4.0.1",
     "husky": "4.2.5",
-    "lint-staged": "10.2.6",
-    "mocha": "7.2.0",
+    "lint-staged": "^10.2.11",
+    "mocha": "^8.0.1",
     "nodemon": "2.0.4",
-    "nyc": "15.0.1",
-    "ts-node": "8.10.1",
-    "typescript": "3.9.3"
+    "npm-check": "^5.9.2",
+    "nyc": "^15.1.0",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.6"
   },
   "dependencies": {
-    "ajv": "6.12.2",
+    "ajv": "^6.12.3",
     "ajv-errors": "1.0.1",
     "dotenv": "8.2.0",
-    "fastify": "2.14.1",
-    "pg": "8.2.1",
+    "fastify": "^3.0.0",
+    "pg": "^8.3.0",
+    "postgres": "^1.0.2",
     "postgres-migrations": "4.0.3",
-    "promise-retry": "1.1.1"
+    "promise-retry": "^2.0.1"
   }
 }
