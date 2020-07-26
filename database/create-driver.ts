@@ -45,7 +45,7 @@ export type Sql = Driver & {
 type TransactionState = 'pending' | 'committed' | 'rolled back'
 
 export type Trx = Driver & {
-  commit: () => Promise<void>
+  release: () => Promise<void>
   rollback: () => Promise<void>
   savepoint: () => Promise<void>
   getState: () => TransactionState
@@ -145,11 +145,11 @@ function createTrx(client: PoolClient, parentId?: string): Trx {
       }
       await client.query(`savepoint ${escapeIdentifier(trxId)}`)
     },
-    commit: async () => {
+    release: async () => {
       if (state !== 'pending') {
         throw new Error(`Cannot commit transaction. Already ${state}.`)
       }
-      await client.query('commit')
+      await client.query(`release ${escapeIdentifier(trxId)}`)
       state = 'committed'
     },
     rollback: async () => {
@@ -179,7 +179,7 @@ export default function createDriver(pool: Pool): Sql {
       try {
         const result = await transaction(trx)
         if (trx.getState() !== 'pending') return result
-        await trx.commit()
+        await trx.release()
         return result
       } catch (err) {
         await trx.rollback()
