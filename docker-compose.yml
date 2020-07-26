@@ -14,7 +14,7 @@ services:
     ports:
       - 8081:8081
     environment:
-      - DATABASE_URL=postgres://admin:password@postgres/lms?sslmode=disable
+      - DATABASE_URL=postgres://admin:password@postgres/api?sslmode=disable
     depends_on:
       - postgres
     restart: always

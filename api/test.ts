@@ -1,58 +1,68 @@
 import 'mocha'
-import { expect } from 'chai'
-import connectToPostgres, { Sql, Trx } from '../database/connect-to-postgres'
+import chai, { expect } from 'chai'
+import { chaiStruct } from 'chai-struct'
+import connectToPostgres, { Sql, Trx } from '../services/connect-to-postgres'
+
+chai.use(chaiStruct)
 
 type Dependencies = {
-  _sql: Trx
+  _sql: Sql
 }
 
-type Setup = (dependencies: Dependencies) => Promise<void> | void
-
-let rootDb: Sql
+let sql: Sql
 let rootTrx: Trx
 let testTrx: Trx
-
-const inject = (setup: Setup) => (done: MochaDone) => {
-  (async () => {
-    await setup({ _sql: testTrx })
-    done()
-  })().catch(done)
-}
+let rollbackRoot: () => void
+let rollbackTest: () => void
 
 before('connect to database', done => {
   (async () => {
-    rootDb = await connectToPostgres()
-    rootTrx = await rootDb.begin()
-    await rootTrx`
-      create table "users" (
-        "username"    text,
-        "dateOfBirth" timestamptz(6)
-      )
-    `
-    done()
+    sql = await connectToPostgres()
+    await sql.begin(async sql => {
+      rootTrx = sql
+      await new Promise((resolve, reject) => {
+        rollbackRoot = reject
+        done()
+      })
+    }).catch(() => sql.end())
   })().catch(done)
 })
 
 beforeEach('begin a test transaction', done => {
   (async () => {
-    testTrx = await rootTrx.begin()
-    done()
+    await rootTrx.savepoint(async trx => {
+      testTrx = trx
+      await new Promise((resolve, reject) => {
+        rollbackTest = reject
+        done()
+      })
+    }).catch(noop)
   })().catch(done)
 })
 
 afterEach('rollback test transaction', done => {
   (async () => {
-    await testTrx.rollback()
+    rollbackTest()
     done()
   })().catch(done)
 })
 
 after('disconnect from database', done => {
   (async () => {
-    await rootTrx.rollback()
-    await rootDb.disconnect()
+    rollbackRoot()
     done()
   })().catch(done)
 })
 
-export { inject, Trx, expect }
+type Setup = (dependencies: Dependencies) => Promise<void> | void
+
+const noop = (): void => {}
+
+const inject = (setup: Setup) => (done: Mocha.Done) => {
+  (async () => {
+    await setup({ _sql: testTrx })
+    done()
+  })().catch(done)
+}
+
+export { Sql, inject, expect }

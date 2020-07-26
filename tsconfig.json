@@ -1,14 +1,14 @@
 {
   "compilerOptions": {
+    "strict": true,
     "esModuleInterop": true,
     "module": "commonjs",
     "outDir": "build/",
-    "strict": true,
     "target": "es2019"
   },
   "include": [
     "api/",
-    "database/"
+    "services/"
   ],
   "exclude": [
     "node_modules/",
