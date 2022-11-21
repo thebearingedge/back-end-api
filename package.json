@@ -19,7 +19,7 @@
     "ajv-errors": "1.0.1",
     "argon2": "0.26.2",
     "dotenv": "8.2.0",
-    "fastify": "3.1.1",
+    "fastify": "3.29.4",
     "postgres": "2.0.0-beta.0",
     "postgres-migrations": "4.0.3",
     "promise-retry": "2.0.1"
